@@ -1,0 +1,24 @@
+[
+  {
+    "id": "booking-1",
+    "workspaceId": "space-1",
+    "userId": "user-demo-1",
+    "date": "2026-07-15",
+    "startTime": "10:00",
+    "durationHours": 4,
+    "totalPrice": 48,
+    "status": "confirmed",
+    "createdAt": "2026-07-01T14:30:00.000Z"
+  },
+  {
+    "id": "booking-2",
+    "workspaceId": "space-4",
+    "userId": "user-demo-1",
+    "date": "2026-07-18",
+    "startTime": "14:00",
+    "durationHours": 3,
+    "totalPrice": 135,
+    "status": "confirmed",
+    "createdAt": "2026-07-02T16:15:00.000Z"
+  }
+]

@@ -1,0 +1,391 @@
+import fs from 'fs';
+import path from 'path';
+import bcrypt from 'bcryptjs';
+import { User, Workspace, Booking } from '../types.js';
+
+// Persistence directory
+const DATA_DIR = path.join(process.cwd(), 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const WORKSPACES_FILE = path.join(DATA_DIR, 'workspaces.json');
+const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
+
+// Ensure database files exist
+function ensureDBFiles() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const demoPasswordHash = bcrypt.hashSync('password123', salt);
+
+  // Initialize Users
+  if (!fs.existsSync(USERS_FILE)) {
+    const defaultUsers: User[] = [
+      {
+        id: 'user-demo-1',
+        name: 'Alex Rivera',
+        email: 'user@deskspace.com',
+        role: 'user',
+        createdAt: new Date('2026-01-10T10:00:00Z').toISOString(),
+      },
+      {
+        id: 'admin-demo-1',
+        name: 'Sarah Chen (Admin)',
+        email: 'admin@deskspace.com',
+        role: 'admin',
+        createdAt: new Date('2026-01-01T10:00:00Z').toISOString(),
+      }
+    ];
+    // Attach hashed password securely within local DB file (not in User interface)
+    const userDbRecord = defaultUsers.map(u => ({
+      ...u,
+      passwordHash: demoPasswordHash
+    }));
+    fs.writeFileSync(USERS_FILE, JSON.stringify(userDbRecord, null, 2));
+  }
+
+  // Initialize Workspaces
+  if (!fs.existsSync(WORKSPACES_FILE)) {
+    const defaultWorkspaces: Workspace[] = [
+      {
+        id: 'space-1',
+        name: 'The Innovation Hub',
+        shortDescription: 'Flexible premium hot-desks with high-speed fiber internet and artisanal coffee bar.',
+        description: 'An open-concept collaborative workspace featuring height-adjustable standing desks, premium ergonomic chairs, acoustic phone booths for private calls, and unlimited gourmet espresso. Located in the heart of Downtown with beautiful views and regular networking events.',
+        category: 'coworking',
+        pricePerHour: 12,
+        rating: 4.8,
+        reviewsCount: 42,
+        location: 'Downtown Seattle, WA',
+        image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['1Gbps Fiber WiFi', 'Espresso Bar', 'Ergonomic Desks', 'Phone Booths', 'Printing Station'],
+        capacity: 45,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-02-01T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-2',
+        name: 'Zen Private Executive Suite',
+        shortDescription: 'Soundproofed private office ideal for focus work, video calls, or small-team sessions.',
+        description: 'A beautifully styled, soundproofed private office suite with large external-facing windows. Equipped with a dual 27" monitor setup, ergonomic task chairs, dimmable ambient lighting, and an air purification system. Perfect for developers, remote executives, or confidential meetings.',
+        category: 'private_office',
+        pricePerHour: 35,
+        rating: 4.9,
+        reviewsCount: 18,
+        location: 'Bellevue Plaza, WA',
+        image: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['Dual 27" Monitors', 'Soundproofing', 'Meeting Whiteboard', 'Herman Miller Chairs', 'Organic Tea Bar'],
+        capacity: 4,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-02-05T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-3',
+        name: 'Skyline Boardroom Lounge',
+        shortDescription: 'State-of-the-art conference room with interactive projector and panoramic views.',
+        description: 'Host your next board meeting or presentation in our premium high-floor boardroom. Equipped with a massive 85" interactive touchscreen 4K TV, modern conference call soundbar, dynamic whiteboard walls, and a dedicated refreshment catering sideboard. Seats up to 12 people comfortably.',
+        category: 'meeting_room',
+        pricePerHour: 55,
+        rating: 4.7,
+        reviewsCount: 31,
+        location: 'South Lake Union, WA',
+        image: 'https://images.unsplash.com/photo-1431540015161-0bf868a2d407?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['85" 4K Smart Hub', 'Whiteboard Wall', 'Conference Audio', 'Catering Available', 'Water & Coffee Service'],
+        capacity: 12,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-02-10T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-4',
+        name: 'Starlight Recording & Sound Studio',
+        shortDescription: 'Acoustically tuned sound studio with high-end microphones, mixers, and instruments.',
+        description: 'A professionally isolated recording studio tuned for voiceovers, vocal tracking, podcast production, and music editing. Includes a spacious vocal booth, U87-grade condenser mics, a digital audio workstation (DAW) with MIDI controllers, and professional studio monitors.',
+        category: 'creative_studio',
+        pricePerHour: 45,
+        rating: 4.95,
+        reviewsCount: 24,
+        location: 'Capitol Hill Arts District, WA',
+        image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['Vocal Booth', 'Studio Monitors', 'U87 Microphone', 'MIDI Master Keyboard', 'Acoustic Soundproofing'],
+        capacity: 3,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-02-12T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-5',
+        name: 'The Foundry Cyclorama Photo Loft',
+        shortDescription: 'Large daylight-flooded photography studio with a full cyclorama wall and softbox lighting.',
+        description: 'An expansive creative photography studio boasting 14-foot brick walls and huge industrial sash windows for gorgeous natural light. Features a built-in 15x15ft white cyclorama wall, dynamic multi-colored backdrops, high-end flash strobes, softboxes, and a private talent changing room.',
+        category: 'creative_studio',
+        pricePerHour: 50,
+        rating: 4.6,
+        reviewsCount: 15,
+        location: 'Pioneer Square, WA',
+        image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['White Cyclorama', 'Professional Strobes', 'Daylight Windows', 'Backdrop Rig', 'Changing Room'],
+        capacity: 8,
+        ownerId: 'user-demo-1',
+        createdAt: new Date('2026-02-15T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-6',
+        name: 'The Hive Collective Coworking',
+        shortDescription: 'Dynamic community hot-desking, networking events, and gorgeous rooftop access.',
+        description: 'Join a vibrant local community of digital nomads and freelancers. The Hive offers flexible hot desks, high-speed WiFi, modern meeting nooks, and access to our stunning outdoor rooftop terrace for afternoon work or team mixers. Friendly community leads always on site.',
+        category: 'coworking',
+        pricePerHour: 10,
+        rating: 4.5,
+        reviewsCount: 56,
+        location: 'Fremont Neighborhood, WA',
+        image: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['Rooftop Terrace', 'Hot Desking', 'Bike Storage', 'Free Flow Craft Beer', 'Community Events'],
+        capacity: 60,
+        ownerId: 'user-demo-1',
+        createdAt: new Date('2026-02-20T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-7',
+        name: 'Prism Multi-Mic Podcast Studio',
+        shortDescription: 'Sleek, fully acoustic podcast room equipped with 4 Shure SM7B mics and audio board.',
+        description: 'Everything you need to launch or produce your top-tier podcast. Impeccably isolated room with a custom circular roundtable, four Shure SM7B microphones on high-grade boom arms, a Rodecaster Pro II recording board, and multi-angle webcam mounts for optional video podcasting.',
+        category: 'creative_studio',
+        pricePerHour: 40,
+        rating: 4.9,
+        reviewsCount: 19,
+        location: 'Ballard Neighborhood, WA',
+        image: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['4x Shure SM7B Mics', 'Rodecaster Pro II Mixer', 'Multi-Webcam Setup', 'Roundtable Console', 'Live Sound Monitor'],
+        capacity: 5,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-02-22T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-8',
+        name: 'The Executive 6-Person Suite',
+        shortDescription: 'Exclusive premium private office for startup teams or small businesses.',
+        description: 'Secure, modern executive workspace for up to 6 people. Features glass whiteboard panels, heavy timber desks, premium rolling mesh-back chairs, locked storage filing cabinets, and a private mini bar stocked with mineral water. Access to the main lounge features included.',
+        category: 'private_office',
+        pricePerHour: 40,
+        rating: 4.8,
+        reviewsCount: 9,
+        location: 'Downtown Corporate Center, WA',
+        image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['6 Premium Desks', 'Whiteboard Panels', 'Secure Filing', 'Mini Fridge', 'Unlimited Tea/Coffee'],
+        capacity: 6,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-02-25T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-9',
+        name: 'Greenhouse Creative Lounge',
+        shortDescription: 'Sunlit design workspace filled with botanical life and sketching canvases.',
+        description: 'An inspiration-focused creative lounge designed specifically for artists, visualizers, and UI/UX designers. Bathed in gorgeous southern light, this plant-filled space features professional drafting tables, watercolor pads, high-grade color-calibrated monitors, and a specialty organic loose tea bar.',
+        category: 'coworking',
+        pricePerHour: 15,
+        rating: 4.75,
+        reviewsCount: 22,
+        location: 'Queen Anne, WA',
+        image: 'https://images.unsplash.com/photo-1542744094-3a31f103e35f?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['Drafting Tables', 'Color Calibrated Screen', 'Plant-Filled Oasis', 'Organic Tea', 'Premium Sketchpads'],
+        capacity: 20,
+        ownerId: 'user-demo-1',
+        createdAt: new Date('2026-03-01T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-10',
+        name: 'The Neon Lab Workshop',
+        shortDescription: 'Hardware prototyping lab with 3D printers, laser cutters, and soldering hubs.',
+        description: 'A physical workspace for makers, IoT developers, and physical product designers. Outfitted with multiple modern Prusa 3D printers, high-precision laser cutters, fully static-grounded soldering stations, digital oscilloscopes, and hand tools. Safety goggles and training manuals provided.',
+        category: 'creative_studio',
+        pricePerHour: 48,
+        rating: 4.88,
+        reviewsCount: 14,
+        location: 'Sodo Industrial District, WA',
+        image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['3D Printers', 'Laser Cutters', 'Soldering Stations', 'Oscilloscopes', 'Safety Equipment'],
+        capacity: 10,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-03-05T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-11',
+        name: 'Metro 4-Person Huddle Room',
+        shortDescription: 'Compact focus room with sliding whiteboard wall and smart streaming hub.',
+        description: 'An elegant, intimate meeting nook customized for quick team daily standups, brain-storming sessions, or private 1-on-1 interviews. Equipped with a high-definition wall TV for video conferencing, sliding whiteboard walls, magnetic task grids, and convenient USB-C fast charge hubs.',
+        category: 'meeting_room',
+        pricePerHour: 22,
+        rating: 4.65,
+        reviewsCount: 29,
+        location: 'University District, WA',
+        image: 'https://images.unsplash.com/photo-1517502884422-41eaaced0168?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['HD TV Screen', 'Whiteboard Wall', 'Fast USB-C charging', 'Ergonomic Seating', 'Premium Filtered Water'],
+        capacity: 4,
+        ownerId: 'user-demo-1',
+        createdAt: new Date('2026-03-08T08:00:00Z').toISOString(),
+      },
+      {
+        id: 'space-12',
+        name: 'Symphony Grand Piano Practice Suite',
+        shortDescription: 'Sound-isolated acoustic suite with a pristine Yamaha C3 Grand Piano.',
+        description: 'A sanctuary for pianists, classical vocalists, and composers. This sound-isolated practice suite features a beautifully maintained Yamaha C3 Baby Grand Piano, professional sheet music stands, heavy acoustic curtains for variable reverberation, a comfortable duet piano bench, and recording mics.',
+        category: 'creative_studio',
+        pricePerHour: 38,
+        rating: 4.92,
+        reviewsCount: 11,
+        location: 'Capitol Hill, WA',
+        image: 'https://images.unsplash.com/photo-1552422535-c45813c61732?auto=format&fit=crop&q=80&w=1200',
+        amenities: ['Yamaha C3 Grand Piano', 'Acoustic Curtains', 'Music Stands', 'Condenser Recording Mic', 'Metronome Hub'],
+        capacity: 2,
+        ownerId: 'admin-demo-1',
+        createdAt: new Date('2026-03-10T08:00:00Z').toISOString(),
+      }
+    ];
+    fs.writeFileSync(WORKSPACES_FILE, JSON.stringify(defaultWorkspaces, null, 2));
+  }
+
+  // Initialize Bookings
+  if (!fs.existsSync(BOOKINGS_FILE)) {
+    const defaultBookings: Booking[] = [
+      {
+        id: 'booking-1',
+        workspaceId: 'space-1',
+        userId: 'user-demo-1',
+        date: '2026-07-15',
+        startTime: '10:00',
+        durationHours: 4,
+        totalPrice: 48,
+        status: 'confirmed',
+        createdAt: new Date('2026-07-01T14:30:00Z').toISOString(),
+      },
+      {
+        id: 'booking-2',
+        workspaceId: 'space-4',
+        userId: 'user-demo-1',
+        date: '2026-07-18',
+        startTime: '14:00',
+        durationHours: 3,
+        totalPrice: 135,
+        status: 'confirmed',
+        createdAt: new Date('2026-07-02T16:15:00Z').toISOString(),
+      }
+    ];
+    fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(defaultBookings, null, 2));
+  }
+}
+
+// Ensure database files exist
+ensureDBFiles();
+
+export const db = {
+  // --- USERS DATABASE ---
+  getUsersRaw(): any[] {
+    ensureDBFiles();
+    try {
+      return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+    } catch {
+      return [];
+    }
+  },
+
+  saveUsersRaw(users: any[]) {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  },
+
+  findUserByEmail(email: string): any | null {
+    const users = this.getUsersRaw();
+    return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+  },
+
+  findUserById(id: string): User | null {
+    const users = this.getUsersRaw();
+    const user = users.find(u => u.id === id);
+    if (!user) return null;
+    const { passwordHash, ...safeUser } = user;
+    return safeUser as User;
+  },
+
+  createUser(user: User & { passwordHash: string }): User {
+    const users = this.getUsersRaw();
+    users.push(user);
+    this.saveUsersRaw(users);
+    const { passwordHash, ...safeUser } = user;
+    return safeUser as User;
+  },
+
+  // --- WORKSPACES DATABASE ---
+  getWorkspaces(): Workspace[] {
+    ensureDBFiles();
+    try {
+      return JSON.parse(fs.readFileSync(WORKSPACES_FILE, 'utf-8'));
+    } catch {
+      return [];
+    }
+  },
+
+  saveWorkspaces(workspaces: Workspace[]) {
+    fs.writeFileSync(WORKSPACES_FILE, JSON.stringify(workspaces, null, 2));
+  },
+
+  findWorkspaceById(id: string): Workspace | null {
+    const workspaces = this.getWorkspaces();
+    return workspaces.find(w => w.id === id) || null;
+  },
+
+  createWorkspace(workspace: Workspace): Workspace {
+    const workspaces = this.getWorkspaces();
+    workspaces.push(workspace);
+    this.saveWorkspaces(workspaces);
+    return workspace;
+  },
+
+  deleteWorkspace(id: string): boolean {
+    const workspaces = this.getWorkspaces();
+    const initialLength = workspaces.length;
+    const filtered = workspaces.filter(w => w.id !== id);
+    if (filtered.length === initialLength) return false;
+    this.saveWorkspaces(filtered);
+    return true;
+  },
+
+  // --- BOOKINGS DATABASE ---
+  getBookings(): Booking[] {
+    ensureDBFiles();
+    try {
+      return JSON.parse(fs.readFileSync(BOOKINGS_FILE, 'utf-8'));
+    } catch {
+      return [];
+    }
+  },
+
+  saveBookings(bookings: Booking[]) {
+    fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(bookings, null, 2));
+  },
+
+  findBookingsByUserId(userId: string): Booking[] {
+    const bookings = this.getBookings();
+    const workspaces = this.getWorkspaces();
+    return bookings
+      .filter(b => b.userId === userId)
+      .map(b => ({
+        ...b,
+        workspace: workspaces.find(w => w.id === b.workspaceId)
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  createBooking(booking: Booking): Booking {
+    const bookings = this.getBookings();
+    bookings.push(booking);
+    this.saveBookings(bookings);
+    return booking;
+  },
+
+  cancelBooking(bookingId: string, userId: string): boolean {
+    const bookings = this.getBookings();
+    const bookingIndex = bookings.findIndex(b => b.id === bookingId && b.userId === userId);
+    if (bookingIndex === -1) return false;
+    bookings[bookingIndex].status = 'cancelled';
+    this.saveBookings(bookings);
+    return true;
+  }
+};
