@@ -13,8 +13,15 @@ const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'deskspace-secret-jwt-key-2026-xyz';
 
 // Middlewares
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -388,6 +395,10 @@ app.get('/api/stats/bookings', (req, res) => {
 });
 
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[DeskSpace Backend] running on http://0.0.0.0:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[DeskSpace Backend] running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+export default app;
