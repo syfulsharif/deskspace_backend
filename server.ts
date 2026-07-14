@@ -99,7 +99,7 @@ app.post('/api/auth/register', async (req, res) => {
   res.cookie('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   });
 
@@ -139,7 +139,7 @@ app.post('/api/auth/login', async (req, res) => {
   res.cookie('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
@@ -148,7 +148,11 @@ app.post('/api/auth/login', async (req, res) => {
 
 // 4. Auth: Logout
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('auth_token');
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none'
+  });
   return res.json({ success: true, data: null });
 });
 
