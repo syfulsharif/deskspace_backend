@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import path from 'path';
 import cookieParser from 'cookie-parser';
@@ -13,15 +16,8 @@ const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'deskspace-secret-jwt-key-2026-xyz';
 
 // Middlewares
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json());
@@ -46,7 +42,7 @@ function authenticateToken(req: any, res: any, next: any) {
 // --- API ROUTES ---
 
 // 1. Auth Status check
-app.get('/api/auth/me', (req: any, res) => {
+app.get('/api/auth/me', async (req: any, res) => {
   const token = req.cookies.auth_token;
   if (!token) {
     return res.json({ success: true, data: null });
@@ -54,7 +50,7 @@ app.get('/api/auth/me', (req: any, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-    const user = db.findUserById(decoded.id);
+    const user = await db.findUserById(decoded.id);
     return res.json({ success: true, data: user });
   } catch {
     return res.json({ success: true, data: null });
@@ -62,7 +58,7 @@ app.get('/api/auth/me', (req: any, res) => {
 });
 
 // 2. Auth: Register
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
@@ -73,7 +69,7 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ success: false, error: 'Password must be at least 6 characters.' });
   }
 
-  const existing = db.findUserByEmail(email);
+  const existing = await db.findUserByEmail(email);
   if (existing) {
     return res.status(400).json({ success: false, error: 'An account with this email already exists.' });
   }
@@ -89,7 +85,7 @@ app.post('/api/auth/register', (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  db.createUser({ ...newUser, passwordHash });
+  await db.createUser({ ...newUser, passwordHash });
 
   // Issue Token
   const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
@@ -105,14 +101,15 @@ app.post('/api/auth/register', (req, res) => {
 });
 
 // 3. Auth: Login
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ success: false, error: 'Please enter your email and password.' });
   }
 
-  const userRecord = db.getUsersRaw().find(u => u.email.toLowerCase() === email.toLowerCase());
+  const usersRaw = await db.getUsersRaw();
+  const userRecord = usersRaw.find(u => u.email.toLowerCase() === email.toLowerCase());
   if (!userRecord) {
     return res.status(401).json({ success: false, error: 'Invalid email or password.' });
   }
@@ -150,10 +147,10 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // 5. Workspaces list (with sorting, filtering, searching and pagination)
-app.get('/api/workspaces', (req, res) => {
+app.get('/api/workspaces', async (req, res) => {
   const { search, category, location, minPrice, maxPrice, sortBy, page = '1', limit = '6' } = req.query;
 
-  let workspaces = db.getWorkspaces();
+  let workspaces = await db.getWorkspaces();
 
   // Keyword search
   if (search) {
@@ -226,8 +223,8 @@ app.get('/api/workspaces', (req, res) => {
 });
 
 // 6. Workspace Detail
-app.get('/api/workspaces/:id', (req, res) => {
-  const workspace = db.findWorkspaceById(req.params.id);
+app.get('/api/workspaces/:id', async (req, res) => {
+  const workspace = await db.findWorkspaceById(req.params.id);
   if (!workspace) {
     return res.status(404).json({ success: false, error: 'Workspace space not found.' });
   }
@@ -235,7 +232,7 @@ app.get('/api/workspaces/:id', (req, res) => {
 });
 
 // 7. Protected: Add Workspace
-app.post('/api/workspaces/create', authenticateToken, (req: any, res) => {
+app.post('/api/workspaces/create', authenticateToken, async (req: any, res) => {
   const { name, shortDescription, description, category, pricePerHour, location, image, amenities, capacity } = req.body;
 
   if (!name || !shortDescription || !description || !category || !pricePerHour || !location || !capacity) {
@@ -285,14 +282,14 @@ app.post('/api/workspaces/create', authenticateToken, (req: any, res) => {
     createdAt: new Date().toISOString()
   };
 
-  db.createWorkspace(newWorkspace);
+  await db.createWorkspace(newWorkspace);
 
   return res.json({ success: true, data: newWorkspace });
 });
 
 // 8. Protected: Delete Workspace
-app.delete('/api/workspaces/delete/:id', authenticateToken, (req: any, res) => {
-  const workspace = db.findWorkspaceById(req.params.id);
+app.delete('/api/workspaces/delete/:id', authenticateToken, async (req: any, res) => {
+  const workspace = await db.findWorkspaceById(req.params.id);
   if (!workspace) {
     return res.status(404).json({ success: false, error: 'Workspace space not found.' });
   }
@@ -302,7 +299,7 @@ app.delete('/api/workspaces/delete/:id', authenticateToken, (req: any, res) => {
     return res.status(403).json({ success: false, error: 'Forbidden: You do not own this space listing.' });
   }
 
-  const success = db.deleteWorkspace(req.params.id);
+  const success = await db.deleteWorkspace(req.params.id);
   if (success) {
     return res.json({ success: true, data: { id: req.params.id } });
   } else {
@@ -311,20 +308,20 @@ app.delete('/api/workspaces/delete/:id', authenticateToken, (req: any, res) => {
 });
 
 // 9. Protected: Bookings of Logged-in User
-app.get('/api/bookings', authenticateToken, (req: any, res) => {
-  const bookings = db.findBookingsByUserId(req.user.id);
+app.get('/api/bookings', authenticateToken, async (req: any, res) => {
+  const bookings = await db.findBookingsByUserId(req.user.id);
   return res.json({ success: true, data: bookings });
 });
 
 // 10. Protected: Create Booking
-app.post('/api/bookings/create', authenticateToken, (req: any, res) => {
+app.post('/api/bookings/create', authenticateToken, async (req: any, res) => {
   const { workspaceId, date, startTime, durationHours } = req.body;
 
   if (!workspaceId || !date || !startTime || !durationHours) {
     return res.status(400).json({ success: false, error: 'Please enter a booking date, start time, and duration.' });
   }
 
-  const workspace = db.findWorkspaceById(workspaceId);
+  const workspace = await db.findWorkspaceById(workspaceId);
   if (!workspace) {
     return res.status(404).json({ success: false, error: 'Workspace space not found.' });
   }
@@ -349,14 +346,14 @@ app.post('/api/bookings/create', authenticateToken, (req: any, res) => {
     createdAt: new Date().toISOString()
   };
 
-  db.createBooking(newBooking);
+  await db.createBooking(newBooking);
 
   return res.json({ success: true, data: newBooking });
 });
 
 // 11. Protected: Cancel Booking
-app.post('/api/bookings/cancel/:id', authenticateToken, (req: any, res) => {
-  const success = db.cancelBooking(req.params.id, req.user.id);
+app.post('/api/bookings/cancel/:id', authenticateToken, async (req: any, res) => {
+  const success = await db.cancelBooking(req.params.id, req.user.id);
   if (success) {
     return res.json({ success: true, data: { id: req.params.id } });
   } else {
