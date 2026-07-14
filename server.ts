@@ -17,7 +17,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'deskspace-secret-jwt-key-2026-xyz'
 
 // Middlewares
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: function (origin, callback) {
+    if (!origin || ['http://localhost:5173', 'http://localhost:3000'].indexOf(origin) !== -1 || (origin && origin.endsWith('.vercel.app'))) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
