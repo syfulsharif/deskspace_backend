@@ -20,5 +20,16 @@
     "totalPrice": 135,
     "status": "confirmed",
     "createdAt": "2026-07-02T16:15:00.000Z"
+  },
+  {
+    "id": "booking-1784071072496",
+    "workspaceId": "space-12",
+    "userId": "admin-demo-1",
+    "date": "2026-07-24",
+    "startTime": "09:00",
+    "durationHours": 2,
+    "totalPrice": 76,
+    "status": "confirmed",
+    "createdAt": "2026-07-14T23:17:52.496Z"
   }
 ]
